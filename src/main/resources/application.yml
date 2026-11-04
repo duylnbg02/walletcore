@@ -3,20 +3,19 @@ spring:
     name: walletcore
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/walletcore}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD}
+    url: jdbc:postgresql://localhost:5432/walletcore
+    username: walletcore
+    password: 123456
 
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: true
 
+  flyway:
+    enabled: true
+    schemas: public
+    default-schema: public
+
 server:
   port: 8080
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
