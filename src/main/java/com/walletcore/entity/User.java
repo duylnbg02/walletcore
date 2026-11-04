@@ -14,11 +14,14 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private String userName;
+    @Column(name = "user_name")
+    private String username;
 
     private String email;
 
     private String phone;
+
+    private String roleCode;
 
     private String passwordHash;
 
