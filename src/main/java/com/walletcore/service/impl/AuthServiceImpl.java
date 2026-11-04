@@ -8,6 +8,7 @@ import com.walletcore.entity.User;
 import com.walletcore.entity.Wallet;
 import com.walletcore.repository.UserRepository;
 import com.walletcore.repository.WalletRepository;
+import com.walletcore.security.JwtService;
 import com.walletcore.service.AuthService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.Date;
 // implement là từ khóa được sử dụng để xác lập mối quan hệ giữa một Class và một Interface.
 public class AuthServiceImpl implements AuthService {
 
+    private final JwtService jwtTokenProvider;
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
     private final PasswordEncoder passwordEncoder;

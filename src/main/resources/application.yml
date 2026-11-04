@@ -21,8 +21,9 @@ spring:
     level:
       org.springframework.security: DEBUG
 
-    jwt:
-      secret: ${JWT_SECRET}
-      expiration: 3600000
+jwt:
+  secret: f49e5b0bf9b6258743e89d2e405af086223fcee5fd0cf8394e3eb2d9c97ea52a
+  expiration: 3600000
+
 server:
   port: 8080
