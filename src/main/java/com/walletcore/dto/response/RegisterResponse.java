@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.UUID;
 
 @Data
-public class RegisterReponse {
+public class RegisterResponse {
     private UUID id;
     private UUID walletId;
     private String username;

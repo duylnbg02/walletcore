@@ -1,7 +1,9 @@
 package com.walletcore.service.impl;
 
+import com.walletcore.dto.request.AuthRequest;
 import com.walletcore.dto.request.RegisterRequest;
-import com.walletcore.dto.response.RegisterReponse;
+import com.walletcore.dto.response.AuthResponse;
+import com.walletcore.dto.response.RegisterResponse;
 import com.walletcore.entity.User;
 import com.walletcore.entity.Wallet;
 import com.walletcore.repository.UserRepository;
@@ -25,7 +27,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override // Đánh dấu triển khai/ghi đè
     @Transactional //Quản lý giao dịch Database
-    public RegisterReponse register(RegisterRequest request) {
+    public RegisterResponse register(RegisterRequest request) {
 
         // TODO 1: Kiểm tra username tồn tại
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -67,7 +69,7 @@ public class AuthServiceImpl implements AuthService {
         walletRepository.save(wallet);
 
         // TODO 7: Trả về RegisterResponse
-        RegisterReponse response = new RegisterReponse();
+        RegisterResponse response = new RegisterResponse();
         response.setId(user.getId());
         response.setUsername(user.getUsername());
         response.setEmail(user.getEmail());
@@ -75,6 +77,31 @@ public class AuthServiceImpl implements AuthService {
         response.setRoleCode(user.getRoleCode());
         response.setWalletId(wallet.getId());
 
+        return response;
+    }
+
+    @Override
+    public AuthResponse login(AuthRequest request) {
+        // TODO 1: Tìm Username
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại"));
+        // TODO 2: Kiểm tra password bằng BCrypt
+        if(!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())){
+            throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không chính xác");
+        }
+        // TODO 3: Kiểm tra trạng thái tài khoản ACTIVE
+        if(!"ACTIVE".equals(user.getStatus())){
+            throw new RuntimeException("Tài khoản đã bị khóa");
+        }
+        // TODO 4: Tạo JWT Access Token
+        String accessToken = jwtTokenProvider.generateToken(user);
+        long expiresIn = 3600L;
+
+        // TODO 5: Trả về AuthResponse
+        AuthResponse response = new AuthResponse();
+        response.setAccessToken(accessToken);
+        response.setTokenType("Bearer");
+        response.setExpiresIn(expiresIn);
         return response;
     }
 }
