@@ -2,9 +2,11 @@ package com.walletcore.service.impl;
 
 import com.walletcore.dto.request.DepositRequest;
 import com.walletcore.dto.request.TransferRequest;
+import com.walletcore.dto.request.WithdrawRequest;
 import com.walletcore.dto.response.DepositResponse;
 import com.walletcore.dto.response.TransferResponse;
 import com.walletcore.dto.response.WalletResponse;
+import com.walletcore.dto.response.WithdrawResponse;
 import com.walletcore.entity.Transaction;
 import com.walletcore.entity.Wallet;
 import com.walletcore.repository.TransactionRepository;
@@ -164,5 +166,53 @@ public class WalletServiceImpl implements WalletService {
         response.setCreatedAt(transaction.getCreatedAt());
 
         return response;
+    }
+
+    @Transactional
+    @Override
+    public WithdrawResponse withdrawWallet (UUID userID, WithdrawRequest request){
+        //TODO 1: Kiểm tra số tiền rút tối thiểu
+        if (request.getAmount() == null || request.getAmount() < 10000) {
+            throw new RuntimeException("Giao dịch tối thiểu 10000 VNĐ");
+        }
+        //TODO 2: Tìm ví theo userId lấy từ JWT và khóa ví.
+        Wallet myWallet = walletRepository.findByUserId(userID)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
+
+        Wallet wallet = walletRepository.findByIdForUpdate(myWallet.getId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
+
+        //TODO 3: Kiểm tra ví ACTIVE.
+        if (!"ACTIVE".equals(wallet.getStatus())) {
+            throw new RuntimeException("Tài khoản bị đóng băng");
+        }
+        //TODO 4: Kiểm tra số dư có đủ không.
+        if(wallet.getBalance() < request.getAmount()){
+            throw new RuntimeException("Số dư không đủ");
+        }
+        //TODO 5: Trừ tiền
+        wallet.setBalance(Math.subtractExact(wallet.getBalance(), request.getAmount()));
+        walletRepository.save(wallet);
+
+        // TODO 6: Lưu Transaction
+        Transaction transaction = new Transaction();
+        transaction.setSenderWalletId(wallet.getId());
+        transaction.setReceiverWalletId(null);
+        transaction.setType("WITHDRAW");
+        transaction.setAmount(request.getAmount());
+        transaction.setStatus("SUCCESS");
+        transaction.setCreatedAt(new Date());
+
+        transactionRepository.save(transaction);
+        //TODO 7: Response
+        WithdrawResponse response = new WithdrawResponse();
+        response.setTransactionId(transaction.getId());
+        response.setAmount(transaction.getAmount());
+        response.setBalance(wallet.getBalance());
+        response.setStatus(transaction.getStatus());
+        response.setCreatedAt(transaction.getCreatedAt());
+
+        return response;
+
     }
 }

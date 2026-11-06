@@ -1,10 +1,10 @@
 package com.walletcore.controller;
 
+import com.walletcore.dto.request.AuthRequest;
 import com.walletcore.dto.request.DepositRequest;
 import com.walletcore.dto.request.TransferRequest;
-import com.walletcore.dto.response.DepositResponse;
-import com.walletcore.dto.response.TransferResponse;
-import com.walletcore.dto.response.WalletResponse;
+import com.walletcore.dto.request.WithdrawRequest;
+import com.walletcore.dto.response.*;
 import com.walletcore.entity.User;
 import com.walletcore.service.WalletService;
 import jakarta.validation.Valid;
@@ -37,5 +37,13 @@ public class WalletController {
             @Valid @RequestBody TransferRequest request
     ){
         return walletservice.transferWallet(user.getId(), request);
+    }
+
+    @PostMapping("/withdraw")
+    public WithdrawResponse withdrawWallet(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody WithdrawRequest request
+    ) {
+        return walletservice.withdrawWallet(user.getId(), request);
     }
 }
