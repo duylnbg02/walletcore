@@ -1,7 +1,9 @@
 package com.walletcore.service.impl;
 
 import com.walletcore.dto.request.DepositRequest;
+import com.walletcore.dto.request.TransferRequest;
 import com.walletcore.dto.response.DepositResponse;
+import com.walletcore.dto.response.TransferResponse;
 import com.walletcore.dto.response.WalletResponse;
 import com.walletcore.entity.Transaction;
 import com.walletcore.entity.Wallet;
@@ -18,6 +20,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class WalletServiceImpl implements WalletService {
+
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
 
@@ -60,7 +63,8 @@ public class WalletServiceImpl implements WalletService {
 
         // TODO 5: Lưu giao dịch (transaction)
         Transaction transaction = new Transaction();
-        transaction.setWalletId(wallet.getId());
+        transaction.setSenderWalletId(null);
+        transaction.setReceiverWalletId(wallet.getId());
         transaction.setType("DEPOSIT");
         transaction.setAmount(request.getAmount());
         transaction.setStatus("SUCCESS");
@@ -73,6 +77,91 @@ public class WalletServiceImpl implements WalletService {
         response.setAmount(transaction.getAmount());
         response.setBalance(wallet.getBalance());
         response.setStatus(transaction.getStatus());
+
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public TransferResponse transferWallet( UUID userId, TransferRequest request) {
+
+        // TODO 1: Kiểm tra số tiền chuyển
+        if (request.getAmount() == null || request.getAmount() < 10000) {
+            throw new RuntimeException("Giao dịch tối thiểu 10000 VNĐ");
+        }
+        // TODO 2: Tìm ID ví gửi theo userId
+        Wallet sender = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví gửi"));
+
+        UUID senderId = sender.getId();
+        UUID receiverId = request.getReceiverWalletId();
+
+        if (receiverId == null) {
+            throw new RuntimeException("ID ví nhận không được để trống");
+        }
+
+        // TODO 3: Không chuyển cho chính mình
+        if (senderId.equals(receiverId)) {
+            throw new RuntimeException("Không thể chuyển tiền cho chính mình");
+        }
+
+        UUID firstId = senderId.compareTo(receiverId) < 0
+                ? senderId : receiverId;
+
+        UUID secondId = senderId.compareTo(receiverId) < 0
+                ? receiverId : senderId;
+
+        Wallet firstWallet = walletRepository.findByIdForUpdate(firstId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
+
+        Wallet secondWallet = walletRepository.findByIdForUpdate(secondId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
+
+        Wallet walletSend = senderId.equals(firstId)
+                ? firstWallet : secondWallet;
+
+        Wallet walletReceiver = receiverId.equals(firstId)
+                ? firstWallet : secondWallet;
+
+        // TODO 4: Kiểm tra trạng thái hai ví ACTIVE
+        if (!"ACTIVE".equals(walletReceiver.getStatus()) || !"ACTIVE".equals(walletSend.getStatus())) {
+            throw new RuntimeException("Tài khoản bị đóng băng");
+        }
+
+        // TODO 5: Kiểm tra số dư ví gửi có đủ không
+        if(walletSend.getBalance() < request.getAmount()){
+            throw new RuntimeException("Số dư không đủ");
+        }
+
+        // TODO 6: Trừ tiền ví gửi
+        walletSend.setBalance(Math.subtractExact(walletSend.getBalance(), request.getAmount()));
+        walletRepository.save(walletSend);
+
+        // TODO 7: Cộng tiền ví nhận
+        walletReceiver.setBalance(Math.addExact(walletReceiver.getBalance(),request.getAmount()));
+        walletRepository.save(walletReceiver);
+
+        // TODO 8: Lưu lịch sử giao dịch
+        Transaction transaction = new Transaction();
+        transaction.setSenderWalletId(walletSend.getId());
+        transaction.setReceiverWalletId(walletReceiver.getId());
+        transaction.setType("TRANSFER");
+        transaction.setAmount(request.getAmount());
+        transaction.setStatus("SUCCESS");
+        transaction.setDescription(request.getDescription());
+        transaction.setCreatedAt(new Date());
+
+        transactionRepository.save(transaction);
+        // TODO 9: Trả TransferResponse
+        TransferResponse response = new TransferResponse();
+        response.setSenderWalletId(transaction.getSenderWalletId());
+        response.setReceiverWalletId(transaction.getReceiverWalletId());
+        response.setTransactionId(transaction.getId());
+        response.setAmount(transaction.getAmount());
+        response.setBalance(walletSend.getBalance());
+        response.setStatus(transaction.getStatus());
+        response.setDescription(transaction.getDescription());
+        response.setCreatedAt(transaction.getCreatedAt());
 
         return response;
     }

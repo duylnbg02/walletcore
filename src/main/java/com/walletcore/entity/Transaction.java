@@ -14,13 +14,17 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private UUID walletId;
+    private UUID senderWalletId;
+
+    private UUID receiverWalletId;
 
     private String type;
 
     private Long amount;
 
     private String status;
+
+    private String description;
 
     private Date createdAt;
 
