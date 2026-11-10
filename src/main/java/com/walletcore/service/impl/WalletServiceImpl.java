@@ -3,10 +3,7 @@ package com.walletcore.service.impl;
 import com.walletcore.dto.request.DepositRequest;
 import com.walletcore.dto.request.TransferRequest;
 import com.walletcore.dto.request.WithdrawRequest;
-import com.walletcore.dto.response.DepositResponse;
-import com.walletcore.dto.response.TransferResponse;
-import com.walletcore.dto.response.WalletResponse;
-import com.walletcore.dto.response.WithdrawResponse;
+import com.walletcore.dto.response.*;
 import com.walletcore.entity.Transaction;
 import com.walletcore.entity.Wallet;
 import com.walletcore.repository.TransactionRepository;
@@ -14,9 +11,14 @@ import com.walletcore.repository.WalletRepository;
 import com.walletcore.service.WalletService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -213,6 +215,45 @@ public class WalletServiceImpl implements WalletService {
         response.setCreatedAt(transaction.getCreatedAt());
 
         return response;
+    }
 
+    @Override
+    @Transactional
+    public PageResponse<TransactionsResponse> transactionsWallet( UUID userId, String type, String status, int page, int size) {
+        // TODO 1: Tìm ví của user đang đăng nhập
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+
+        // TODO 2: Tạo phân trang
+        Pageable pageable = PageRequest.of( page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        // TODO 3: Lấy lịch sử giao dịch
+        Page<Transaction> transactions = transactionRepository.findHistory( wallet.getId(), type, status, pageable
+        );
+
+        // TODO 4: Mapping Transaction sang TransactionsResponse
+        Page<TransactionsResponse> responsePage = transactions.map(transaction -> {
+
+            TransactionsResponse response = new TransactionsResponse();
+
+            response.setId(transaction.getId());
+            response.setType(transaction.getType());
+            response.setAmount(transaction.getAmount());
+            response.setStatus(transaction.getStatus());
+            response.setDescription(transaction.getDescription());
+            response.setCreatedAt(transaction.getCreatedAt());
+
+            // TODO 5: Xác định chiều giao dịch
+            response.setDirection(wallet.getId().equals(transaction.getSenderWalletId()) ? "OUT" : "IN");
+            return response;
+        });
+
+        // TODO 6: Chuyển Page thành PageResponse
+        return new PageResponse<>(
+                responsePage.getContent(),
+                responsePage.getTotalElements(),
+                responsePage.getNumber(),
+                responsePage.getSize()
+        );
     }
 }
