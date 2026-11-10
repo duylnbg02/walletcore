@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/wallets")
@@ -56,5 +57,13 @@ public class WalletController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return walletservice.transactionsWallet(user.getId(), type, status, page, size );
+    }
+
+    @GetMapping("/transactions/{transactionId}")
+    public  TransactionsResponse getTransactionDetail(
+            @AuthenticationPrincipal User user,
+            @PathVariable UUID transactionId
+    ){
+      return walletservice.getTransactionDetail(user.getId(), transactionId);
     }
 }

@@ -222,7 +222,7 @@ public class WalletServiceImpl implements WalletService {
     public PageResponse<TransactionsResponse> transactionsWallet( UUID userId, String type, String status, int page, int size) {
         // TODO 1: Tìm ví của user đang đăng nhập
         Wallet wallet = walletRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Wallet not found"));
+                .orElseThrow(() -> new RuntimeException("Không có Wallet hợp lệ"));
 
         // TODO 2: Tạo phân trang
         Pageable pageable = PageRequest.of( page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -255,5 +255,42 @@ public class WalletServiceImpl implements WalletService {
                 responsePage.getNumber(),
                 responsePage.getSize()
         );
+    }
+
+    @Override
+    @Transactional
+    public TransactionsResponse getTransactionDetail (UUID userId, UUID transactionId ){
+        // TODO 1: Tìm Wallet theo userId
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Không có Wallet hợp lệ"));
+
+        // TODO 2: Tìm Transaction theo transactionId
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new RuntimeException("Id giao dịch không hợp lệ"));
+
+        // TODO 3: Kiểm tra walletId có phải sender hoặc receiver
+        boolean isSender = wallet.getId().equals(transaction.getSenderWalletId());
+
+        boolean isReceiver = wallet.getId().equals(transaction.getReceiverWalletId());
+
+        if (!isSender && !isReceiver) {
+            throw new RuntimeException("Bạn không có quyền xem giao dịch này");
+        }
+
+        // TODO 4: Xác định direction IN / OUT
+        String direction = isSender ? "OUT" : "IN";
+
+        // TODO 5: Mapping Transaction sang TransactionsResponse
+        TransactionsResponse response = new TransactionsResponse();
+
+        response.setId(transaction.getId());
+        response.setType(transaction.getType());
+        response.setDirection(direction);
+        response.setAmount(transaction.getAmount());
+        response.setStatus(transaction.getStatus());
+        response.setDescription(transaction.getDescription());
+        response.setCreatedAt(transaction.getCreatedAt());
+
+        return response;
     }
 }

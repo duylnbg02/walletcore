@@ -20,4 +20,6 @@ public interface WalletService {
     WithdrawResponse withdrawWallet(UUID userID, WithdrawRequest request);
 
     PageResponse<TransactionsResponse> transactionsWallet( UUID userId,  String type,  String status,  int page,  int size );
+
+    TransactionsResponse getTransactionDetail(UUID userId, UUID transactionId);
 }
