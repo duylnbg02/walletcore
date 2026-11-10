@@ -2,6 +2,7 @@ package com.walletcore.controller;
 
 import com.walletcore.dto.request.*;
 import com.walletcore.dto.response.*;
+import com.walletcore.entity.Transaction;
 import com.walletcore.entity.User;
 import com.walletcore.service.WalletService;
 import jakarta.validation.Valid;
@@ -65,5 +66,13 @@ public class WalletController {
             @PathVariable UUID transactionId
     ){
       return walletservice.getTransactionDetail(user.getId(), transactionId);
+    }
+
+    @PatchMapping("/status")
+    public  WalletResponse updateWalletStatus (
+            @AuthenticationPrincipal User user,
+            @Valid @RequestParam String status
+    ){
+        return walletservice.updateWalletStatus(user.getId(), status);
     }
 }

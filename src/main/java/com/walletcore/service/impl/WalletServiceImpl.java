@@ -293,4 +293,39 @@ public class WalletServiceImpl implements WalletService {
 
         return response;
     }
+
+    @Override
+    @Transactional
+    public WalletResponse updateWalletStatus(UUID userId, String status) {
+        if (!"ACTIVE".equals(status) && !"FROZEN".equals(status)) {
+            throw new IllegalArgumentException("Trạng thái ví không hợp lệ");
+        }
+
+        // TODO 2: Tìm Wallet theo userId
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Không có Wallet hợp lệ"));
+
+        // TODO 3: Kiểm tra trạng thái hiện tại
+        if (wallet.getStatus().equals(status)) {
+            throw new IllegalStateException("Ví đã ở trạng thái " + status);
+        }
+
+        // TODO 4: Cập nhật trạng thái
+        wallet.setStatus(status);
+
+        // TODO 5: Lưu vào database
+        walletRepository.save(wallet);
+
+        // TODO 6: Mapping sang WalletResponse
+        WalletResponse response = new WalletResponse();
+        response.setId(wallet.getId());
+        response.setUserId(wallet.getUserId());
+        response.setBalance(wallet.getBalance());
+        response.setCurrency(wallet.getCurrency());
+        response.setStatus(wallet.getStatus());
+        response.setCreatedAt(wallet.getCreatedAt());
+
+        // TODO 7: Trả kết quả
+        return response;
+    }
 }

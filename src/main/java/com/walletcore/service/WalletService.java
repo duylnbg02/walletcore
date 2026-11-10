@@ -22,4 +22,6 @@ public interface WalletService {
     PageResponse<TransactionsResponse> transactionsWallet( UUID userId,  String type,  String status,  int page,  int size );
 
     TransactionsResponse getTransactionDetail(UUID userId, UUID transactionId);
+
+    WalletResponse updateWalletStatus(UUID userId, String status);
 }
