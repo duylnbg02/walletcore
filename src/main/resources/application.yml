@@ -21,6 +21,11 @@ spring:
     level:
       org.springframework.security: DEBUG
 
+  data: 
+    redis:
+        host: localhost
+        port: 6379
+        timeout: 3s
 jwt:
   secret: f49e5b0bf9b6258743e89d2e405af086223fcee5fd0cf8394e3eb2d9c97ea52a
   expiration: 3600000
