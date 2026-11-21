@@ -8,40 +8,78 @@ import com.walletcore.entity.Transaction;
 import com.walletcore.entity.Wallet;
 import com.walletcore.repository.TransactionRepository;
 import com.walletcore.repository.WalletRepository;
+import com.walletcore.service.RedisService;
 import com.walletcore.service.WalletService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WalletServiceImpl implements WalletService {
 
     private final WalletRepository walletRepository;
     private final TransactionRepository transactionRepository;
+    private final RedisService redisService;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
-    public WalletResponse getMyWallet(UUID userId){
-        // TODO 1: Tìm ví theo userId
+    public WalletResponse getMyWallet(UUID userId) {
+
+        // TODO 1: Tạo Redis Key
+        String key = "walletcore:wallet:user:" + userId;
+
+        // TODO 2: Lấy dữ liệu từ Redis
+        String cachedData = null; 
+        try {
+            cachedData = redisService.get(key);
+        } catch (Exception e){
+            log.warn("Không thể đọc Redis: {}", e.getMessage());
+        }
+
+        // TODO 3: Cache HIT - Redis có dữ liệu
+        if (cachedData != null) {
+            return objectMapper.readValue( cachedData, WalletResponse.class);
+        }
+
+        // TODO 4: Cache MISS - Lấy dữ liệu từ PostgreSQL
         Wallet wallet = walletRepository.findByUserId(userId)
-                .orElseThrow(()->new RuntimeException("Không tìm thấy ví"));
-        // TODO 2: Chuyển Entity sang Response
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
+
+        // TODO 5: Mapping Entity sang WalletResponse
         WalletResponse response = new WalletResponse();
+
         response.setId(wallet.getId());
         response.setUserId(wallet.getUserId());
         response.setBalance(wallet.getBalance());
         response.setCurrency(wallet.getCurrency());
         response.setStatus(wallet.getStatus());
         response.setCreatedAt(wallet.getCreatedAt());
+
+        // TODO 6: Chuyển WalletResponse thành JSON
+        String json = objectMapper.writeValueAsString(response);
+
+        // TODO 7: Lưu dữ liệu vào Redis với TTL 60 giây
+        try {
+            redisService.set(key, json, Duration.ofSeconds(60));
+        } catch (Exception e) {
+            log.warn("Không thể ghi Redis: {}", e.getMessage());
+        }
+
+        // TODO 8: Trả về WalletResponse
         return response;
     }
 
@@ -75,7 +113,11 @@ public class WalletServiceImpl implements WalletService {
         transaction.setCreatedAt(new Date());
 
         transactionRepository.save(transaction);
-        // TODO 6: Trả reponse
+
+        // TODO 6: xóa redis
+        redisService.delete("walletcore:wallet:user:" + userId);
+
+        // TODO 7: Trả reponse
         DepositResponse response = new DepositResponse();
         response.setTransactionId(transaction.getId());
         response.setAmount(transaction.getAmount());
@@ -145,7 +187,12 @@ public class WalletServiceImpl implements WalletService {
         walletReceiver.setBalance(Math.addExact(walletReceiver.getBalance(),request.getAmount()));
         walletRepository.save(walletReceiver);
 
-        // TODO 8: Lưu lịch sử giao dịch
+        // TODO 8: Xóa Redis
+        redisService.delete("walletcore:wallet:user:" + userId);
+
+        redisService.delete("walletcore:wallet:user:" + walletReceiver.getUserId());
+
+        // TODO 9: Lưu lịch sử giao dịch
         Transaction transaction = new Transaction();
         transaction.setSenderWalletId(walletSend.getId());
         transaction.setReceiverWalletId(walletReceiver.getId());
@@ -156,7 +203,7 @@ public class WalletServiceImpl implements WalletService {
         transaction.setCreatedAt(new Date());
 
         transactionRepository.save(transaction);
-        // TODO 9: Trả TransferResponse
+        // TODO 10: Trả TransferResponse
         TransferResponse response = new TransferResponse();
         response.setSenderWalletId(transaction.getSenderWalletId());
         response.setReceiverWalletId(transaction.getReceiverWalletId());
@@ -172,13 +219,13 @@ public class WalletServiceImpl implements WalletService {
 
     @Transactional
     @Override
-    public WithdrawResponse withdrawWallet (UUID userID, WithdrawRequest request){
+    public WithdrawResponse withdrawWallet (UUID userId, WithdrawRequest request){
         //TODO 1: Kiểm tra số tiền rút tối thiểu
         if (request.getAmount() == null || request.getAmount() < 10000) {
             throw new RuntimeException("Giao dịch tối thiểu 10000 VNĐ");
         }
         //TODO 2: Tìm ví theo userId lấy từ JWT và khóa ví.
-        Wallet myWallet = walletRepository.findByUserId(userID)
+        Wallet myWallet = walletRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
 
         Wallet wallet = walletRepository.findByIdForUpdate(myWallet.getId())
@@ -196,7 +243,10 @@ public class WalletServiceImpl implements WalletService {
         wallet.setBalance(Math.subtractExact(wallet.getBalance(), request.getAmount()));
         walletRepository.save(wallet);
 
-        // TODO 6: Lưu Transaction
+        //TODO 6: Xóa Redis
+        redisService.delete("walletcore:wallet:user:" + userId);
+
+        // TODO 7: Lưu Transaction
         Transaction transaction = new Transaction();
         transaction.setSenderWalletId(wallet.getId());
         transaction.setReceiverWalletId(null);
@@ -206,7 +256,7 @@ public class WalletServiceImpl implements WalletService {
         transaction.setCreatedAt(new Date());
 
         transactionRepository.save(transaction);
-        //TODO 7: Response
+        //TODO 8: Response
         WithdrawResponse response = new WithdrawResponse();
         response.setTransactionId(transaction.getId());
         response.setAmount(transaction.getAmount());
@@ -315,6 +365,8 @@ public class WalletServiceImpl implements WalletService {
 
         // TODO 5: Lưu vào database
         walletRepository.save(wallet);
+
+        redisService.delete("walletcore:wallet:user:" + userId);
 
         // TODO 6: Mapping sang WalletResponse
         WalletResponse response = new WalletResponse();
