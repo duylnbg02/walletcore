@@ -9,4 +9,5 @@ public class TransferRequest {
     private UUID receiverWalletId; //ID ví nhận
     private Long amount;
     private String description;
+    private String pin;
 }

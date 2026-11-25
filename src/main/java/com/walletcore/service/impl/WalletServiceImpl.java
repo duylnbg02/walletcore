@@ -9,6 +9,7 @@ import com.walletcore.entity.Wallet;
 import com.walletcore.repository.TransactionRepository;
 import com.walletcore.repository.WalletRepository;
 import com.walletcore.service.RedisService;
+import com.walletcore.service.UserService;
 import com.walletcore.service.WalletService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class WalletServiceImpl implements WalletService {
     private final TransactionRepository transactionRepository;
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
+    private final UserService userService;
 
     private void evictWalletCacheAfterCommit(UUID userId) {
 
@@ -164,6 +166,9 @@ public class WalletServiceImpl implements WalletService {
         if (request.getAmount() == null || request.getAmount() < 10000) {
             throw new RuntimeException("Giao dịch tối thiểu 10000 VNĐ");
         }
+
+        userService.verifyPin(userId, request.getPin());
+
         // TODO 2: Tìm ID ví gửi theo userId
         UUID senderId = walletRepository.findIdByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ví gửi"));
@@ -252,6 +257,9 @@ public class WalletServiceImpl implements WalletService {
         if (request.getAmount() == null || request.getAmount() < 10000) {
             throw new RuntimeException("Giao dịch tối thiểu 10000 VNĐ");
         }
+
+        userService.verifyPin(userId, request.getPin());
+
         //TODO 2: Tìm ví theo userId lấy từ JWT và khóa ví.
         Wallet wallet = walletRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
