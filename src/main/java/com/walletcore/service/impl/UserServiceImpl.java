@@ -1,5 +1,6 @@
 package com.walletcore.service.impl;
 
+import com.walletcore.dto.request.ChangePinRequest;
 import com.walletcore.dto.request.SetupPinRequest;
 import com.walletcore.entity.User;
 import com.walletcore.repository.UserRepository;
@@ -21,28 +22,28 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-@Transactional
-public void setupPin(UUID userId, SetupPinRequest request) {
-    String pin = request.getPin();
-    validatePin(pin);
+    @Transactional
+    public void setupPin(UUID userId, SetupPinRequest request) {
+        String pin = request.getPin();
+        validatePin(pin);
 
-    User user = userRepository.findByIdForUpdate(userId)
-            .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Không tìm thấy người dùng"
-            ));
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Không tìm thấy người dùng"
+                ));
 
-    if (user.getPinHash() != null) {
-        throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Bạn đã thiết lập mã PIN"
-        );
+        if (user.getPinHash() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Bạn đã thiết lập mã PIN"
+            );
+        }
+
+        String pinHash = passwordEncoder.encode(pin);
+        user.setPinHash(pinHash);
+        userRepository.save(user);
     }
-
-    String pinHash = passwordEncoder.encode(pin);
-    user.setPinHash(pinHash);
-    userRepository.save(user);
-}
 
     @Override
     public void verifyPin(UUID userId, String pin) {
@@ -52,6 +53,32 @@ public void setupPin(UUID userId, SetupPinRequest request) {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
+        verifyUserPin(user, pin);
+    }
+
+    @Override
+    @Transactional
+    public void changePin(UUID userId, ChangePinRequest request) {
+        String oldPin = request.getOldPin();
+        String newPin = request.getNewPin();
+        validatePin(oldPin);
+        validatePin(newPin);
+
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
+
+        verifyUserPin(user, oldPin);
+
+        if (oldPin.equals(newPin)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PIN mới phải khác PIN hiện tại");
+        }
+
+        user.setPinHash(passwordEncoder.encode(newPin));
+        userRepository.save(user);
+    }
+
+    private void verifyUserPin(User user, String pin) {
         if (user.getPinHash() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn chưa thiết lập mã PIN");
         }

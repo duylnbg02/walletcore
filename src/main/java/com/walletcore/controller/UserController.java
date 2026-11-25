@@ -1,5 +1,6 @@
 package com.walletcore.controller;
 
+import com.walletcore.dto.request.ChangePinRequest;
 import com.walletcore.dto.request.SetupPinRequest;
 import com.walletcore.entity.User;
 import com.walletcore.service.UserService;
@@ -24,6 +25,15 @@ public class UserController {
             @RequestBody SetupPinRequest request
     ) {
         userService.setupPin(user.getId(), request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/change-pin")
+    public ResponseEntity<Void> changePin(
+            @AuthenticationPrincipal User user,
+            @RequestBody ChangePinRequest request
+    ) {
+        userService.changePin(user.getId(), request);
         return ResponseEntity.noContent().build();
     }
 }

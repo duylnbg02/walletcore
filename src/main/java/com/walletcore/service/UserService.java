@@ -1,5 +1,6 @@
 package com.walletcore.service;
 
+import com.walletcore.dto.request.ChangePinRequest;
 import com.walletcore.dto.request.SetupPinRequest;
 
 import java.util.UUID;
@@ -8,4 +9,6 @@ public interface UserService {
     void setupPin(UUID userId, SetupPinRequest request);
 
     void verifyPin(UUID userId, String pin);
+
+    void changePin(UUID userId, ChangePinRequest request);
 }
