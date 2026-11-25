@@ -59,7 +59,6 @@ public class PinAttemptService {
                         "Không thể xác thực PIN lúc này, vui lòng thử lại sau", exception);
             }
 
-            // EXEC returns null if another request changed or expired the watched key.
             if (remainingSeconds == null) {
                 continue;
             }
@@ -111,7 +110,7 @@ public class PinAttemptService {
 
             var results = operations.exec();
             transactionStarted = false;
-            if (results == null) {
+            if (results == null || results.isEmpty()) {
                 return null;
             }
             return locksUser ? LOCK_DURATION.getSeconds() : 0L;

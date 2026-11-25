@@ -17,10 +17,6 @@ spring:
     schemas: public
     default-schema: public
 
-  logging:
-    level:
-      org.springframework.security: DEBUG
-
   data: 
     redis:
         host: localhost
@@ -29,6 +25,11 @@ spring:
 jwt:
   secret: f49e5b0bf9b6258743e89d2e405af086223fcee5fd0cf8394e3eb2d9c97ea52a
   expiration: 3600000
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: INFO
 
 server:
   port: 8080

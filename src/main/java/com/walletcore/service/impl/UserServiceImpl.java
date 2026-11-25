@@ -48,10 +48,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void verifyPin(UUID userId, String pin) {
         validatePin(pin);
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
