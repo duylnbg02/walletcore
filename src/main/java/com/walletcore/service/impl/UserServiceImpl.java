@@ -4,6 +4,7 @@ import com.walletcore.dto.request.ChangePinRequest;
 import com.walletcore.dto.request.SetupPinRequest;
 import com.walletcore.entity.User;
 import com.walletcore.repository.UserRepository;
+import com.walletcore.service.PinAttemptService;
 import com.walletcore.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PinAttemptService pinAttemptService;
 
     @Override
     @Transactional
@@ -53,7 +55,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
-        verifyUserPin(user, pin);
+        verifyUserPin(userId, user, pin);
     }
 
     @Override
@@ -68,7 +70,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
-        verifyUserPin(user, oldPin);
+        verifyUserPin(userId, user, oldPin);
 
         if (oldPin.equals(newPin)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PIN mới phải khác PIN hiện tại");
@@ -78,14 +80,19 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
-    private void verifyUserPin(User user, String pin) {
+    private void verifyUserPin(UUID userId, User user, String pin) {
         if (user.getPinHash() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bạn chưa thiết lập mã PIN");
         }
 
+        pinAttemptService.checkAllowed(userId);
+
         if (!passwordEncoder.matches(pin, user.getPinHash())) {
+            pinAttemptService.recordFailure(userId);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã PIN không chính xác");
         }
+
+        pinAttemptService.recordSuccess(userId);
     }
 
     private void validatePin(String pin) {
