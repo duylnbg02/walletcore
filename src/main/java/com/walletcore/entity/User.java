@@ -29,4 +29,5 @@ public class User {
 
     private Date createdAt;
 
+    private String pinHash;
 }
